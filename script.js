@@ -314,7 +314,7 @@ window.addEventListener("DOMContentLoaded", () => {
         fromLngLat,
         toLngLat,
         freqGHz,
-        segments = 256
+        segments = 64
     ) {
         // Endpoints in Mercator meters
         const p1m = lngLatToMeters(fromLngLat[0], fromLngLat[1]);
@@ -866,7 +866,6 @@ window.addEventListener("DOMContentLoaded", () => {
 
     const FRESNEL_MAX_FILL = 0.18;
 
-
     function animateFresnelIn(durationMs = 400) {
         if (!overlaysReady) return;
 
@@ -1243,7 +1242,7 @@ window.addEventListener("DOMContentLoaded", () => {
                 linkGeometryEl.textContent = `Distance: ${formatMeters(
                     link.distanceMeters
                 )}`;
-                linkFresnelEl.textContent = `1st Fresnel radius ≈ ${formatRadius(
+                linkFresnelEl.textContent = `1st Fresnel radius at mid-span ≈ ${formatRadius(
                     link.fresnelRadius
                 )}`;
 
@@ -1447,7 +1446,7 @@ window.addEventListener("DOMContentLoaded", () => {
                 type: "line",
                 source: fresnelSourceId,
                 paint: {
-                    "line-color": "#5ef916ff",
+                    "line-color": "#f97316",
                     "line-width": 1.5,
                     "line-dasharray": [2, 2],
                     "line-opacity": 0.9
@@ -1580,7 +1579,7 @@ window.addEventListener("DOMContentLoaded", () => {
             {
                 id: "link-panel",
                 title: "Link properties",
-                text: "In the Links tab, you’ll see endpoints, shared frequency (channel), path distance, and 1st Fresnel radius.",
+                text: "In the Links tab, you’ll see endpoints, shared frequency (channel), path distance, and 1st Fresnel radius at mid-span.",
                 placement: "right",
                 autoTab: "link-panel"
             },
