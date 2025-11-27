@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>RF Link Planner – Simplified P2P RF Outdoor Link Tool</title>
+
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css" rel="stylesheet" />
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@300;400;500&display=swap" />
+
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <button id="sidebar-edge-tab" aria-label="Toggle sidebar">
+        <span class="chevron">⟨</span>
+    </button>
+
+    <div id="app">
+        <aside id="sidebar">
+            <div class="brand">
+                <img src="./assets/logo.png" alt="RF Link Planner" class="brand-logo" />
+                <div>
+                    <div class="brand-title">RF Link Planner</div>
+                    <div class="brand-sub">Simplified point-to-point outdoor RF links</div>
+                </div>
+            </div>
+
+            <div id="summary-row">
+                <span class="pill-stat">
+                    <span class="pill-dot"></span>
+                    <span id="tower-count">0</span> towers
+                </span>
+                <span class="hint-text">
+                    <span id="link-count">0</span> links
+                </span>
+            </div>
+
+            <div id="sidebar-tabs">
+                <button class="tab-btn active" data-panel="tower-panel">
+                    <span class="icon">📡</span>
+                    Towers
+                    <span class="chevron-small">▾</span>
+                </button>
+                <button class="tab-btn" data-panel="link-panel">
+                    <span class="icon">🔗</span>
+                    Links
+                    <span class="chevron-small">▾</span>
+                </button>
+            </div>
+
+            <section class="panel tabbed active" id="tower-panel">
+                <div class="panel-header">
+                    <h2>Towers</h2>
+                    <span class="badge">Node</span>
+                </div>
+
+                <div class="card collapsible-card" id="add-tower-card">
+                    <div class="card-header collapsible-header" id="add-tower-header">
+                        <div class="card-title-row">
+                            <div class="card-title-main">
+                                <span class="card-dot card-dot-green"></span>
+                                <span class="card-title-text">Add new tower by Coordinates</span>
+                            </div>
+                            <div class="card-title-main">
+                                <span class="collapse-icon-wrap">
+                                    <span class="material-symbols-outlined collapse-icon">expand_more</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-subtitle">
+                            Or click anywhere on the map to open a quick “add tower” popup.
+                        </div>
+                    </div>
+
+                    <div class="collapsible-body" id="add-tower-body">
+                        <div class="field field-inline-2">
+                            <div class="field">
+                                <label>Latitude</label>
+                                <input type="number" id="add-tower-lat" step="0.000001" placeholder="Enter latitude" />
+                            </div>
+                            <div class="field">
+                                <label>Longitude</label>
+                                <input type="number" id="add-tower-lng" step="0.000001" placeholder="Enter longitude" />
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label>Frequency <span class="right">GHz</span></label>
+                            <input type="number" id="add-tower-freq" min="0.1" step="0.1" value="5"
+                                placeholder="Example: 5.0" />
+                        </div>
+
+                        <button class="btn full-width" id="add-tower-btn">
+                            <span class="icon">➕</span> Add tower at coordinates
+                        </button>
+                    </div>
+                </div>
+
+                <hr class="panel-divider" />
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title-row">
+                            <div class="card-title-main">
+                                <span class="card-dot card-dot-blue"></span>
+                                <span class="card-title-text">Selected tower</span>
+                            </div>
+                            <span class="chip subtle" id="tower-id-chip">
+                                <span id="tower-id-label">–</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div id="no-tower-selected" class="empty-state">
+                        <div class="empty-icon">📡</div>
+                        <div class="empty-title">No tower selected</div>
+                        <div class="empty-text">Click a tower icon on the map to view and edit its settings.</div>
+                    </div>
+
+                    <div id="tower-details" class="hidden">
+                        <div class="field">
+                            <label>Coordinates</label>
+                            <div class="field-value" id="tower-coords"></div>
+                        </div>
+
+                        <div class="field">
+                            <label>Frequency <span class="right">GHz</span></label>
+                            <div class="field-inline">
+                                <input type="number" id="tower-freq" min="0.1" step="0.1" />
+                                <span class="freq-pill">
+                                    <span class="freq-swatch" id="freq-swatch"></span>
+                                    <span id="freq-label">–</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <button id="save-tower-edits-btn" class="btn full-width hidden">
+                            <span class="icon material-symbols-outlined">save</span>
+                            Save edits
+                        </button>
+
+                        <button class="btn btn-danger full-width" id="delete-tower-btn">
+                            <span class="icon">🗑</span> Remove tower &amp; links
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel tabbed" id="link-panel">
+                <div class="panel-header">
+                    <h2>Links</h2>
+                    <span class="badge">P2P</span>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title-row">
+                            <div class="card-title-main">
+                                <span class="card-dot card-dot-orange"></span>
+                                <span class="card-title-text">Selected link</span>
+                            </div>
+                            <span class="chip subtle" id="link-id-chip">
+                                <span id="link-id-label">–</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div id="no-link-selected" class="empty-state">
+                        <div class="empty-icon">🔗</div>
+                        <div class="empty-title">No link selected</div>
+                        <div class="empty-text">Click a link line on the map to see Fresnel and elevation details here.
+                        </div>
+                    </div>
+
+                    <div id="link-details" class="hidden">
+                        <div class="field">
+                            <label>Endpoints</label>
+                            <div class="field-value" id="link-towers"></div>
+                        </div>
+
+                        <div class="field">
+                            <label>Frequency <span class="right">Channel</span></label>
+                            <div class="field-value" id="link-frequency"></div>
+                        </div>
+
+                        <div class="field">
+                            <label>Geometry <span class="right">Distance</span></label>
+                            <div class="field-value" id="link-geometry"></div>
+                        </div>
+
+                        <div class="field">
+                            <label>Fresnel (1st zone) <span class="right">Mid-span</span></label>
+                            <div class="field-value" id="link-fresnel"></div>
+                        </div>
+
+                        <button class="btn btn-danger full-width" id="delete-link-btn">
+                            <span class="icon">🗑</span> Delete link
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-tight">
+                    <div class="card-header">
+                        <div class="card-title-row">
+                            <div class="card-title-main">
+                                <span class="card-dot card-dot-purple"></span>
+                                <span class="card-title-text">Elevation profile</span>
+                            </div>
+                            <span class="chip">Open-Elevation</span>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label>Status</label>
+                        <div class="field-value" id="link-elevation"></div>
+                    </div>
+
+                    <div class="field">
+                        <label>Profile chart</label>
+                        <div id="link-chart-container" class="chart-container">
+                            <div class="hint-text">
+                                Select a link and wait a moment to see terrain and line-of-sight.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <button id="info-toggle" type="button">
+                <span class="icon">ℹ</span>
+                Info &amp; Hints
+            </button>
+
+            <section class="panel hidden" id="hints-panel">
+                <div class="panel-header">
+                    <h2>Hints</h2>
+                    <span class="badge">Guide</span>
+                </div>
+                <ul class="hint-list">
+                    <li>
+                        <div class="hint-bullet"></div>
+                        <div><strong>Frequency</strong> behaves like a channel. Only towers on the same channel can
+                            link.</div>
+                    </li>
+                    <li>
+                        <div class="hint-bullet"></div>
+                        <div>Use the <strong>tower popup</strong> on the map to start or cancel a link.</div>
+                    </li>
+                    <li>
+                        <div class="hint-bullet"></div>
+                        <div>Click a link line to visualize its <strong>1st Fresnel zone</strong>.</div>
+                    </li>
+                    <li>
+                        <div class="hint-bullet"></div>
+                        <div>Hover a link to see distance & frequency.</div>
+                    </li>
+                </ul>
+            </section>
+
+            <div id="status-bar">
+                <span id="status-text">Click a tower marker for link options.</span>
+            </div>
+        </aside>
+
+        <div id="map-container">
+            <div id="map"></div>
+
+            <div id="map-style-switcher">
+                <button class="style-btn " data-style="streets" title="Streets">
+                    <span class="material-symbols-outlined">streetview</span>
+                </button>
+
+                <button class="style-btn active" data-style="satellite" title="Satellite">
+                    <span class="material-symbols-outlined">satellite</span>
+                </button>
+
+                <button class="style-btn" data-style="dark" title="Dark">
+                    <span class="material-symbols-outlined">dark_mode</span>
+                </button>
+            </div>
+
+            <div id="hover-tooltip"></div>
+
+            <div id="toast"></div>
+        </div>
+    </div>
+
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
