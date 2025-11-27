@@ -238,7 +238,5 @@ The layout is optimized for *desktop and tablet*:
 
 If I continue this project, I would like to:
 
-* Add antenna height configuration and recompute LOS more accurately.
-* Check where terrain intersects the Fresnel zone and flag potential obstruction.
 * Support import/export of tower/link data (CSV/GeoJSON).
-* Add more link metrics (e.g., azimuth, bearing, basic link budget fields).
+* Add more link metrics.
