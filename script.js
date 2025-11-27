@@ -1448,7 +1448,7 @@ window.addEventListener("DOMContentLoaded", () => {
                 source: fresnelSourceId,
                 paint: {
                     "line-color": "#5ef916ff",
-                    "line-width": 2.5,
+                    "line-width": 1.5,
                     "line-dasharray": [2, 2],
                     "line-opacity": 0.9
                 }
