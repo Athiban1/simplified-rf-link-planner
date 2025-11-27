@@ -57,7 +57,7 @@ window.addEventListener("DOMContentLoaded", () => {
                 "space-color": "#000000",
                 "horizon-blend": 0.02
             });
-        } catch (e) {}
+        } catch (e) { }
 
         const layers = map.getStyle().layers || [];
         const skyId = layers.find((l) => l.type === "sky")?.id;
@@ -70,7 +70,7 @@ window.addEventListener("DOMContentLoaded", () => {
                     "sky-atmosphere-sun-intensity",
                     2.5
                 );
-            } catch (e) {}
+            } catch (e) { }
         } else {
             try {
                 map.addLayer({
@@ -82,7 +82,7 @@ window.addEventListener("DOMContentLoaded", () => {
                         "sky-atmosphere-sun-intensity": 2.5
                     }
                 });
-            } catch (e) {}
+            } catch (e) { }
         }
     }
 
@@ -113,7 +113,7 @@ window.addEventListener("DOMContentLoaded", () => {
                         map.setLayoutProperty(id, "visibility", "none");
                     }
                 }
-            } catch (e) {}
+            } catch (e) { }
         });
     }
 
@@ -160,7 +160,7 @@ window.addEventListener("DOMContentLoaded", () => {
                         bearing,
                         pitch
                     });
-                } catch (e) {}
+                } catch (e) { }
 
                 if (t < 1) {
                     requestAnimationFrame(frame);
@@ -289,6 +289,7 @@ window.addEventListener("DOMContentLoaded", () => {
         return { lng: lon, lat: lat };
     }
 
+    // Mid-path Fresnel radius (kept for summary / stats)
     function fresnelRadiusMid(freqGHz, distanceM) {
         const fHz = freqGHz * 1e9;
         const c = 3e8;
@@ -297,41 +298,74 @@ window.addEventListener("DOMContentLoaded", () => {
         return Math.sqrt(Math.max(r2, 0));
     }
 
-    function generateFresnelEllipseCoords(
+    // NEW: Fresnel radius as a function of fractional distance t (0..1)
+    function fresnelRadiusAtFraction(freqGHz, totalDistanceM, t) {
+        const fHz = freqGHz * 1e9;
+        const c = 3e8;
+        const lambda = c / fHz;
+
+        // First Fresnel zone: r(t) = sqrt(lambda * D * t * (1 - t))
+        const r2 = lambda * totalDistanceM * t * (1 - t);
+        return Math.sqrt(Math.max(r2, 0));
+    }
+
+    // NEW: Generate a variable-radius Fresnel "tube" polygon along the path
+    function generateFresnelTubePolygonCoords(
         fromLngLat,
         toLngLat,
         freqGHz,
-        segments = 64
+        segments = 256
     ) {
-        const d = distanceMeters(fromLngLat, toLngLat);
-        const rMax = fresnelRadiusMid(freqGHz, d);
-
+        // Endpoints in Mercator meters
         const p1m = lngLatToMeters(fromLngLat[0], fromLngLat[1]);
         const p2m = lngLatToMeters(toLngLat[0], toLngLat[1]);
 
-        const cx = (p1m.x + p2m.x) / 2;
-        const cy = (p1m.y + p2m.y) / 2;
-
         const dx = p2m.x - p1m.x;
         const dy = p2m.y - p1m.y;
-        const angle = Math.atan2(dy, dx);
 
-        const a = d / 2;
-        const b = rMax;
+        // Use geodesic distance for Fresnel math
+        const totalDistanceM = distanceMeters(fromLngLat, toLngLat);
 
-        const coords = [];
+        const Dm = Math.sqrt(dx * dx + dy * dy);
+        if (Dm === 0 || totalDistanceM === 0) return [];
+
+        // Unit vector along path (in Mercator meters)
+        const ux = dx / Dm;
+        const uy = dy / Dm;
+
+        // Perpendicular unit vector (left normal)
+        const nx = -uy;
+        const ny = ux;
+
+        const leftSide = [];
+        const rightSide = [];
+
         for (let i = 0; i <= segments; i++) {
-            const t = (i / segments) * Math.PI * 2;
-            let x = a * Math.cos(t);
-            let y = b * Math.sin(t);
+            const t = segments === 0 ? 0 : i / segments;
 
-            const xr = x * Math.cos(angle) - y * Math.sin(angle);
-            const yr = x * Math.sin(angle) + y * Math.cos(angle);
+            const r = fresnelRadiusAtFraction(freqGHz, totalDistanceM, t);
 
-            const xm = cx + xr;
-            const ym = cy + yr;
-            const ll = metersToLngLat(xm, ym);
-            coords.push([ll.lng, ll.lat]);
+            // Center point along the line in Mercator meters
+            const cx = p1m.x + dx * t;
+            const cy = p1m.y + dy * t;
+
+            // Left and right offsets
+            const lx = cx + nx * r;
+            const ly = cy + ny * r;
+            const rx = cx - nx * r;
+            const ry = cy - ny * r;
+
+            const llLeft = metersToLngLat(lx, ly);
+            const llRight = metersToLngLat(rx, ry);
+
+            leftSide.push([llLeft.lng, llLeft.lat]);
+            rightSide.push([llRight.lng, llRight.lat]);
+        }
+
+        // Build closed ring: left forward + right backward
+        const coords = leftSide.concat(rightSide.reverse());
+        if (coords.length > 0) {
+            coords.push(coords[0]);
         }
         return coords;
     }
@@ -830,7 +864,8 @@ window.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    const FRESNEL_MAX_FILL = 0.18;
+    const FRESNEL_MAX_FILL = 0.4;  // or even 0.6 while testing
+
 
     function animateFresnelIn(durationMs = 400) {
         if (!overlaysReady) return;
@@ -840,7 +875,7 @@ window.addEventListener("DOMContentLoaded", () => {
         try {
             map.setPaintProperty(fresnelFillLayerId, "fill-opacity", 0);
             map.setPaintProperty(fresnelOutlineLayerId, "line-opacity", 0);
-        } catch (e) {}
+        } catch (e) { }
 
         function frame(ts) {
             if (startTime === null) startTime = ts;
@@ -862,7 +897,7 @@ window.addEventListener("DOMContentLoaded", () => {
                     "line-opacity",
                     outlineOpacity
                 );
-            } catch (e) {}
+            } catch (e) { }
 
             if (t < 1) {
                 requestAnimationFrame(frame);
@@ -882,7 +917,7 @@ window.addEventListener("DOMContentLoaded", () => {
                 try {
                     map.setPaintProperty(fresnelFillLayerId, "fill-opacity", 0);
                     map.setPaintProperty(fresnelOutlineLayerId, "line-opacity", 0);
-                } catch (e) {}
+                } catch (e) { }
             }
             return;
         }
@@ -893,7 +928,8 @@ window.addEventListener("DOMContentLoaded", () => {
         if (!link || !a || !b) {
             fresnelGeoJSON.features = [];
         } else {
-            const coords = generateFresnelEllipseCoords(
+            // NEW: variable-radius Fresnel tube polygon
+            const coords = generateFresnelTubePolygonCoords(
                 a.lngLat,
                 b.lngLat,
                 link.freqGHz
@@ -1207,7 +1243,7 @@ window.addEventListener("DOMContentLoaded", () => {
                 linkGeometryEl.textContent = `Distance: ${formatMeters(
                     link.distanceMeters
                 )}`;
-                linkFresnelEl.textContent = `1st Fresnel radius at mid-span ≈ ${formatRadius(
+                linkFresnelEl.textContent = `1st Fresnel radius ≈ ${formatRadius(
                     link.fresnelRadius
                 )}`;
 
@@ -1411,8 +1447,8 @@ window.addEventListener("DOMContentLoaded", () => {
                 type: "line",
                 source: fresnelSourceId,
                 paint: {
-                    "line-color": "#f97316",
-                    "line-width": 1.5,
+                    "line-color": "#5ef916ff",
+                    "line-width": 2.5,
                     "line-dasharray": [2, 2],
                     "line-opacity": 0.9
                 }
@@ -1488,8 +1524,8 @@ window.addEventListener("DOMContentLoaded", () => {
 
     attachLinkLayerEvents();
 
-        // ----------------- Guided Tour -----------------
-        // ----------------- Guided Tour (detailed) -----------------
+    // ----------------- Guided Tour -----------------
+    // ----------------- Guided Tour (detailed) -----------------
     const TOUR_STORAGE_KEY = "rfLinkPlannerTourSeen_v1";
 
     function shouldRunGuidedTour() {
@@ -1503,7 +1539,7 @@ window.addEventListener("DOMContentLoaded", () => {
     function markTourDone() {
         try {
             localStorage.setItem(TOUR_STORAGE_KEY, "1");
-        } catch (e) {}
+        } catch (e) { }
     }
 
     function startGuidedTour() {
@@ -1544,7 +1580,7 @@ window.addEventListener("DOMContentLoaded", () => {
             {
                 id: "link-panel",
                 title: "Link properties",
-                text: "In the Links tab, you’ll see endpoints, shared frequency (channel), path distance, and 1st Fresnel radius at mid-span.",
+                text: "In the Links tab, you’ll see endpoints, shared frequency (channel), path distance, and 1st Fresnel radius.",
                 placement: "right",
                 autoTab: "link-panel"
             },
