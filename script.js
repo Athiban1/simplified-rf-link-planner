@@ -864,7 +864,7 @@ window.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    const FRESNEL_MAX_FILL = 0.4;  // or even 0.6 while testing
+    const FRESNEL_MAX_FILL = 0.18;
 
 
     function animateFresnelIn(durationMs = 400) {
